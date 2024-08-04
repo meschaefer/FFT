@@ -5,111 +5,62 @@ Created on Sun Dec  5 10:16:10 2021
 @author: Mike
 """
 
-# Import numpy
 import numpy as np
 
-# Create binary array from integer
+def int_to_bin(x):
+    """Convert an integer to a binary array."""
+    return [int(d) for d in bin(x)[2:]]
 
-def inttobin(x):
-    y = [int(d) for d in str(bin(x))[2:]]
-    return y
+def bin_to_int(x):
+    """Convert a binary array to an integer."""
+    return sum(val * (2 ** idx) for idx, val in enumerate(reversed(x)))
 
-# Create integer from binary array
-
-def bintoint(x):
-    sum = 0
-    l = len(x) - 1
-    for i in range(len(x)):
-        sum = sum + (2**l)*x[i]
-        l = l - 1
-    return sum
-
-# Determine if number is a power of 2
-
-def checkpowerof2(binarray):
+def check_power_of_2(bin_array):
+    """Check if a binary array represents a power of 2.
     
-    # If the sum of binary array is 1, we already have a power of 2.
-    
-    if sum(binarray) == 1:
-        y = binarray
-        return y
-    
-    # If the sum of binary array is not 1, construct one that does.
-    
-    if sum(binarray) != 1:
-        l = len(binarray)
-        newbinarray = [1]
-        for i in range(l):
-            newbinarray.append(0)
-        y = newbinarray
-        return y
+    If not, return the smallest binary array that represents a power of 2
+    greater than the given binary array.
+    """
+    if sum(bin_array) == 1:
+        return bin_array
+    else:
+        return [1] + [0] * len(bin_array)
 
-    
-# Return least power of 2 equal to or greater than input
+def get_power_of_2(x):
+    """Return the least power of 2 greater than or equal to x."""
+    bin_array = int_to_bin(x)
+    power_of_2_array = check_power_of_2(bin_array)
+    return bin_to_int(power_of_2_array)
 
-def getpowerof2(x):
-    a = inttobin(x)
-    b = checkpowerof2(a)
-    c = bintoint(b)
-    return c
-
-# Horner's method for polynomial evaluation
-
-def horner(P, x):
-    l = len(P)
-    sum = P[l - 1]
-    for i in range(1, len(P)):
-        sum = x*sum + P[l - 2]
-        l = l - 1
-    return sum
-
-
-
-# Fast fourier transform given function f and number of points to evaluate n
-
-'P is array of polynomial coefficients from least power to greatest'
-'n is number of samples rounded up to the nearest power of 2'
+def horner(coeffs, x):
+    """Evaluate a polynomial at x using Horner's method."""
+    result = coeffs[-1]
+    for coeff in reversed(coeffs[:-1]):
+        result = result * x + coeff
+    return result
 
 def fft(P, n):
-    
-    # Choose w such that w is a getpowerof2(n)th root of unity
-    n = getpowerof2(n)
-    w = []
-    for i in range(n):
-        w.append(np.exp((2*np.pi*1j*(i+1))/(n)))
-    w = np.roll(w, 1)
-    
-    # Check if our polynomial is odd/even then construct arrays with odd/even terms
-    if len(P)%2==0:
-        P_even = P[0::2]
-        P_even = np.insert(P_even, slice(1, None), 0)
-        
-        P_odd = P[1::2]
-        P_odd = np.insert(P_odd, slice(1, None), 0)
-    else:
-        P_even = P[1::2]
-        P_even = np.insert(P_even, slice(1, None), 0)
-        
-        P_odd = P[0::2]
-        P_odd = np.insert(P_odd, slice(1, None), 0)
-    
-    y_even = []
-    y_odd = []
-    
-    # Evaluate p_odd and p_even
+    """Compute the Fast Fourier Transform of a polynomial P.
+
+    P: Array of polynomial coefficients from least power to greatest.
+    n: Number of samples, rounded up to the nearest power of 2.
+    """
+    n = get_power_of_2(n)
+    w = np.exp(2 * np.pi * 1j * np.arange(n) / n)
+
+    P_even = P[::2] + [0] * (n - len(P[::2]))
+    P_odd = P[1::2] + [0] * (n - len(P[1::2]))
+
+    y_even = [horner(P_even, w_i) for w_i in w[:n//2]]
+    y_odd = [horner(P_odd, w_i) for w_i in w[:n//2]]
+
+    y = np.empty(n, dtype=complex)
     for i in range(n//2):
-        y_even.append(horner(P_even, w[i]))
-        
-    for i in range(n//2):
-        y_odd.append(horner(P_odd, w[i]))
-    
-    # Construct array of p(w) for w roots of unity
-    y = np.empty(n, dtype=object)
-    for i in range(n//2):
-        y[i]=(y_even[i] + w[i]*y_odd[i])
-        y[i+(n//2)]=(y_even[i]-w[i]*y_odd[i])
-        
+        y[i] = y_even[i] + w[i] * y_odd[i]
+        y[i + n//2] = y_even[i] - w[i] * y_odd[i]
+
     return y
 
-fft([1, 2, 3, 4], 4)
-
+# Example usage
+result = fft([1, 2, 3, 4], 4)
+print(result)
